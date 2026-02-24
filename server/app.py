@@ -3,6 +3,7 @@ from flask_cors import CORS
 import mysql.connector
 from dotenv import load_dotenv
 import os
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
@@ -11,13 +12,18 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # MySQL Connection (XAMPP default settings)
 # MySQL Connection using environment variables
-db = mysql.connector.connect(
-    host=os.getenv("DB_HOST"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME")
-)
-
+logging.basicConfig(level=logging.DEBUG)
+try:
+    db = mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME"),
+        port=os.getenv("DB_PORT")
+    )
+    logging.info("Database connection successful")
+except mysql.connector.Error as err:
+    logging.error(f"Error: {err}")
 
 cursor = db.cursor(dictionary=True)
 
