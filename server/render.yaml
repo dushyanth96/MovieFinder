@@ -1,0 +1,6 @@
+services:
+  - name: movie-finder-server
+    type: web
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT"
