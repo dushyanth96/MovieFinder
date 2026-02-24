@@ -4,6 +4,7 @@ import mysql.connector
 from dotenv import load_dotenv
 import os
 import logging
+from mysql.connector import Error
 
 # Load environment variables from .env file
 load_dotenv()
@@ -13,19 +14,32 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # MySQL Connection (XAMPP default settings)
 # MySQL Connection using environment variables
 logging.basicConfig(level=logging.DEBUG)
-try:
-    db = mysql.connector.connect(
-        host=os.getenv("DB_HOST"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        database=os.getenv("DB_NAME"),
-        port=os.getenv("DB_PORT")
-    )
-    logging.info("Database connection successful")
-except mysql.connector.Error as err:
-    logging.error(f"Error: {err}")
 
-cursor = db.cursor(dictionary=True)
+def connect_to_database():
+    try:
+        db = mysql.connector.connect(
+            host=os.getenv("DB_HOST"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            database=os.getenv("DB_NAME"),
+            port=int(os.getenv("DB_PORT", 3306))
+        )
+        logging.info("Database connection successful")
+        return db
+    except Error as err:
+        logging.error(f"Error connecting to the database: {err}")
+        return None
+
+db = connect_to_database()
+
+if db:
+    try:
+        cursor = db.cursor(dictionary=True)
+        logging.info("Cursor created successfully")
+    except Error as err:
+        logging.error(f"Error creating cursor: {err}")
+else:
+    logging.error("Database connection not established. Cannot create cursor.")
 
 @app.route("/api/test", methods=["GET"])
 def test():
