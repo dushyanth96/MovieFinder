@@ -27,7 +27,7 @@ useEffect(() => {
 
         try {
             const res = await fetch(
-                `http://127.0.0.1:5000/api/favorites/${user.id}`
+                `https://moviefinder-k306.onrender.com/api/favorites/${user.id}`
             );
             const data = await res.json();
 
@@ -64,7 +64,7 @@ useEffect(() => {
     if (!user) return;
 
     try {
-        await fetch("http://127.0.0.1:5000/api/favorites/add", {
+        await fetch("https://moviefinder-k306.onrender.com/api/favorites/add", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -95,7 +95,7 @@ useEffect(() => {
     if (!user) return;
 
     try {
-        await fetch("http://127.0.0.1:5000/api/favorites/remove", {
+        await fetch("https://moviefinder-k306.onrender.com/api/favorites/remove", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

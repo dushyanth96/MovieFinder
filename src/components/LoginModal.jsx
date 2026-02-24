@@ -21,8 +21,8 @@ const handleSubmit = async (e) => {
   setMessage("Processing...");
 
   const endpoint = isLogin
-    ? "http://127.0.0.1:5000/api/login"
-    : "http://127.0.0.1:5000/api/register";
+    ? "https://moviefinder-k306.onrender.com/api/login"
+    : "https://moviefinder-k306.onrender.com/api/register";
 
   try {
     const res = await fetch(endpoint, {
