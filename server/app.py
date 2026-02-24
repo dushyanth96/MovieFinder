@@ -156,5 +156,20 @@ def remove_favorite():
 
     return jsonify({"message": "Favorite removed"}), 200
 
+@app.route('/test-db')
+def test_db():
+    try:
+        db = mysql.connector.connect(
+            host=os.getenv("DB_HOST"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            database=os.getenv("DB_NAME"),
+            port=int(os.getenv("DB_PORT", 3306))
+        )
+        if db.is_connected():
+            return "Database connection successful", 200
+    except mysql.connector.Error as err:
+        return f"Database connection failed: {err}", 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
