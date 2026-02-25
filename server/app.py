@@ -11,30 +11,48 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# MySQL Connection (XAMPP default settings)
 # MySQL Connection using environment variables
 logging.basicConfig(level=logging.DEBUG)
 
 def connect_to_database():
-    try:
-        db = mysql.connector.connect(
-            host=os.getenv("DB_HOST"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            database=os.getenv("DB_NAME"),
-            port=int(os.getenv("DB_PORT", 3306)),
-            ssl_disabled=False,
-            # Robust settings for Aiven
-            connection_timeout=10,
-            buffered=True
-        )
-        logging.info("Database connection successful")
-        return db
-    except Error as err:
-        import traceback
-        logging.error(f"Error connecting to the database: {err}")
-        logging.error(traceback.format_exc())
-        return None
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    db_name = os.getenv("DB_NAME")
+    
+    print(f"--- DATABASE CONNECTION ATTEMPT ---")
+    print(f"Host: {host}:{port}")
+    print(f"User: {user}")
+    
+    # Try multiple times if it's just a cold-start/network flicker
+    max_retries = 2
+    for attempt in range(max_retries + 1):
+        try:
+            db = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=db_name,
+                port=int(port) if port else 3306,
+                # Aiven specific SSL requirements
+                ssl_disabled=False,
+                ssl_verify_cert=False, 
+                connection_timeout=15,
+                use_pure=True 
+            )
+            logging.info("Database connection successful ✅")
+            return db
+        except Error as err:
+            if attempt < max_retries:
+                print(f"⚠️ Attempt {attempt + 1} failed ( {err} ), retrying in 2s...")
+                import time
+                time.sleep(2)
+            else:
+                print(f"❌ DATABASE CONNECTION FAILED after {max_retries} retries: {err}")
+                import traceback
+                logging.error(traceback.format_exc())
+                return None
 
 def init_db(db):
     if not db:
@@ -86,6 +104,11 @@ def health():
 # REGISTER API
 @app.route("/api/register", methods=["POST"])
 def register():
+    # Ensure cursor exists
+    global cursor
+    if not db:
+        return jsonify({"message": "Database not connected"}), 500
+    
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
@@ -93,6 +116,12 @@ def register():
     if not email or not password:
         return jsonify({"message": "Email and password required"}), 400
 
+    # Ensure cursor is available
+    if not db.is_connected():
+        db.reconnect()
+
+    cursor = db.cursor(dictionary=True)
+    
     # Check if user already exists
     cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
     existing_user = cursor.fetchone()
@@ -107,7 +136,6 @@ def register():
     )
     db.commit()
 
-    # Return user object (IMPORTANT for your React context)
     return jsonify({
         "message": "User registered successfully",
         "user": {
@@ -119,6 +147,10 @@ def register():
 # LOGIN API
 @app.route("/api/login", methods=["POST"])
 def login():
+    global cursor
+    if not db:
+        return jsonify({"message": "Database not connected"}), 500
+        
     data = request.get_json()
     email = data.get("email")
     password = data.get("password")
@@ -126,6 +158,10 @@ def login():
     if not email or not password:
         return jsonify({"message": "Email and password required"}), 400
 
+    if not db.is_connected():
+        db.reconnect()
+    
+    cursor = db.cursor(dictionary=True)
     cursor.execute(
         "SELECT * FROM users WHERE email = %s AND password = %s",
         (email, password)
@@ -135,7 +171,6 @@ def login():
     if not user:
         return jsonify({"message": "Invalid email or password"}), 401
 
-    # Return user in format your frontend expects
     return jsonify({
         "message": "Login successful",
         "user": {
@@ -147,6 +182,9 @@ def login():
 # ADD FAVORITE
 @app.route("/api/favorites/add", methods=["POST"])
 def add_favorite():
+    if not db:
+        return jsonify({"message": "Database not connected"}), 500
+        
     data = request.get_json()
     user_id = data.get("user_id")
     movie_id = data.get("movie_id")
@@ -157,6 +195,9 @@ def add_favorite():
         return jsonify({"message": "Missing data"}), 400
 
     try:
+        if not db.is_connected():
+            db.reconnect()
+        cursor = db.cursor()
         cursor.execute(
             "INSERT INTO favorites (user_id, movie_id, title, poster_path) VALUES (%s, %s, %s, %s)",
             (user_id, movie_id, title, poster_path)
@@ -170,6 +211,12 @@ def add_favorite():
 # GET USER FAVORITES
 @app.route("/api/favorites/<int:user_id>", methods=["GET"])
 def get_favorites(user_id):
+    if not db:
+        return jsonify({"message": "Database not connected"}), 500
+        
+    if not db.is_connected():
+        db.reconnect()
+    cursor = db.cursor(dictionary=True)
     cursor.execute(
         "SELECT movie_id, title, poster_path FROM favorites WHERE user_id = %s",
         (user_id,)
@@ -181,10 +228,16 @@ def get_favorites(user_id):
 # REMOVE FAVORITE
 @app.route("/api/favorites/remove", methods=["POST"])
 def remove_favorite():
+    if not db:
+        return jsonify({"message": "Database not connected"}), 500
+        
     data = request.get_json()
     user_id = data.get("user_id")
     movie_id = data.get("movie_id")
 
+    if not db.is_connected():
+        db.reconnect()
+    cursor = db.cursor()
     cursor.execute(
         "DELETE FROM favorites WHERE user_id = %s AND movie_id = %s",
         (user_id, movie_id)
@@ -196,16 +249,20 @@ def remove_favorite():
 @app.route('/test-db')
 def test_db():
     try:
-        db = mysql.connector.connect(
+        test_db = mysql.connector.connect(
             host=os.getenv("DB_HOST"),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
-            database=os.getenv("DB_NAME")
+            database=os.getenv("DB_NAME"),
+            port=int(os.getenv("DB_PORT", 3306)),
+            ssl_disabled=False
         )
-        if db.is_connected():
+        if test_db.is_connected():
+            test_db.close()
             return "Database connection successful", 200
     except mysql.connector.Error as err:
         return f"Database connection failed: {err}", 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
