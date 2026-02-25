@@ -36,10 +36,8 @@ def connect_to_database():
                 database=db_name,
                 port=int(port) if port else 3306,
                 # Aiven specific SSL requirements
-                ssl_disabled=False,
-                ssl_verify_cert=False, 
-                connection_timeout=15,
-                use_pure=True 
+                ssl_mode='REQUIRED',
+                connection_timeout=15
             )
             logging.info("Database connection successful ✅")
             return db
