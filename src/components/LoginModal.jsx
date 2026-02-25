@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMovieContext } from "../contexts/MovieContext";
 import '../css/LoginModal.css';
+import { backendFetch } from "../services/backend";
 const LoginModal = () => {
   const { setShowLoginModal, setUser } = useMovieContext();
   console.log("LoginModal rendered");
@@ -20,18 +21,16 @@ const handleSubmit = async (e) => {
   setLoading(true);
   setMessage("Processing...");
 
-  const endpoint = isLogin
-    ? "https://moviefinder-k306.onrender.com/api/login"
-    : "https://moviefinder-k306.onrender.com/api/register";
+  const endpoint = isLogin ? "/login" : "/register";
 
   try {
-    const res = await fetch(endpoint, {
+    const res = await backendFetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
-    });
+    }, true);
 
     const data = await res.json();
 

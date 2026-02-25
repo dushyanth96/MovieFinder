@@ -1,4 +1,5 @@
 import { createContext,useState,useContext, useEffect } from "react";
+import { backendFetch } from "../services/backend";
 
 const MovieContext = createContext();
 
@@ -26,8 +27,10 @@ useEffect(() => {
         }
 
         try {
-            const res = await fetch(
-                `https://moviefinder-k306.onrender.com/api/favorites/${user.id}`
+            const res = await backendFetch(
+                `/favorites/${user.id}`,
+                {},
+                true // Await warm-up for this blocking request
             );
             const data = await res.json();
 
@@ -64,7 +67,7 @@ useEffect(() => {
     if (!user) return;
 
     try {
-        await fetch("https://moviefinder-k306.onrender.com/api/favorites/add", {
+        await backendFetch("/favorites/add", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -95,7 +98,7 @@ useEffect(() => {
     if (!user) return;
 
     try {
-        await fetch("https://moviefinder-k306.onrender.com/api/favorites/remove", {
+        await backendFetch("/favorites/remove", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

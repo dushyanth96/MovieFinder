@@ -22,28 +22,65 @@ def connect_to_database():
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME"),
-            port=int(os.getenv("DB_PORT", 3306))
+            port=int(os.getenv("DB_PORT", 3306)),
+            ssl_disabled=False,
+            # Robust settings for Aiven
+            connection_timeout=10,
+            buffered=True
         )
         logging.info("Database connection successful")
         return db
     except Error as err:
+        import traceback
         logging.error(f"Error connecting to the database: {err}")
+        logging.error(traceback.format_exc())
         return None
 
-db = connect_to_database()
-
-if db:
+def init_db(db):
+    if not db:
+        return
     try:
-        cursor = db.cursor(dictionary=True)
-        logging.info("Cursor created successfully")
+        cursor = db.cursor()
+        # Create users table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Create favorites table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS favorites (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                movie_id INT NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                poster_path VARCHAR(255),
+                UNIQUE KEY unique_fav (user_id, movie_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        db.commit()
+        logging.info("Database tables initialized successfully")
     except Error as err:
-        logging.error(f"Error creating cursor: {err}")
+        logging.error(f"Error initializing database tables: {err}")
+
+db = connect_to_database()
+if db:
+    init_db(db)
+    cursor = db.cursor(dictionary=True)
 else:
-    logging.error("Database connection not established. Cannot create cursor.")
+    logging.error("Database connection not established. Tables not initialized.")
 
 @app.route("/api/test", methods=["GET"])
 def test():
     return jsonify({"message": "Backend running successfully"})
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"}), 200
 
 
 # REGISTER API
