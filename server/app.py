@@ -15,11 +15,11 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 logging.basicConfig(level=logging.DEBUG)
 
 def connect_to_database():
-    host = os.getenv("DB_HOST")
-    port = os.getenv("DB_PORT")
-    user = os.getenv("DB_USER")
-    password = os.getenv("DB_PASSWORD")
-    db_name = os.getenv("DB_NAME")
+    host = os.getenv("DB_HOST", "").strip()
+    port = os.getenv("DB_PORT", "").strip()
+    user = os.getenv("DB_USER", "").strip()
+    password = os.getenv("DB_PASSWORD", "").strip()
+    db_name = os.getenv("DB_NAME", "").strip()
     
     print(f"--- DATABASE CONNECTION ATTEMPT ---")
     print(f"Host: {host}:{port}")
