@@ -9,7 +9,14 @@ export const MovieProvider = ({children})=>{
     // 🔥 NEW: Auth state (for login system)
     const [user, setUser] = useState(() => {
         const storedUser = localStorage.getItem("user");
-        return storedUser ? JSON.parse(storedUser) : null;
+        if (!storedUser) return null;
+        const parsed = JSON.parse(storedUser);
+        // Guard: old sessions stored user without `id` — clear them to force re-login
+        if (!parsed?.id) {
+            localStorage.removeItem("user");
+            return null;
+        }
+        return parsed;
     });
 
     useEffect(() => {
@@ -21,7 +28,7 @@ export const MovieProvider = ({children})=>{
 }, [user]);
 useEffect(() => {
     const fetchFavorites = async () => {
-        if (!user) {
+        if (!user || !user.id) {
             setFavorites([]);
             return;
         }
@@ -32,6 +39,12 @@ useEffect(() => {
                 {},
                 true // Await warm-up for this blocking request
             );
+
+            if (!res.ok) {
+                console.error("Failed to fetch favorites, status:", res.status);
+                return;
+            }
+
             const data = await res.json();
 
             // Convert backend format → frontend movie format
@@ -64,7 +77,7 @@ useEffect(() => {
    
 
     const addToFavorites = async (movie) => {
-    if (!user) return;
+    if (!user || !user.id) return;
 
     try {
         await backendFetch("/favorites/add", {
@@ -95,7 +108,7 @@ useEffect(() => {
 
 
     const removeFromFavorites = async (movieId) => {
-    if (!user) return;
+    if (!user || !user.id) return;
 
     try {
         await backendFetch("/favorites/remove", {

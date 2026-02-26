@@ -51,43 +51,11 @@ def connect_to_database():
                 logging.error(traceback.format_exc())
                 return None
 
-def init_db(db):
-    if not db:
-        return
-    try:
-        cursor = db.cursor()
-        # Create users table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        # Create favorites table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS favorites (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT NOT NULL,
-                movie_id INT NOT NULL,
-                title VARCHAR(255) NOT NULL,
-                poster_path VARCHAR(255),
-                UNIQUE KEY unique_fav (user_id, movie_id),
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        """)
-        db.commit()
-        logging.info("Database tables initialized successfully")
-    except Error as err:
-        logging.error(f"Error initializing database tables: {err}")
-
 db = connect_to_database()
 if db:
-    init_db(db)
     cursor = db.cursor(dictionary=True)
 else:
-    logging.error("Database connection not established. Tables not initialized.")
+    logging.error("Database connection not established.")
 
 @app.route("/api/test", methods=["GET"])
 def test():
